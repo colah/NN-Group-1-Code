@@ -67,15 +67,6 @@ class Network:
         self._scale_weights = function([decay_constant], [],
             updates = [ (x.var, decay_constant*x.var ) for x in aug_params ]
             )
-        idscale_constant = T.scalar()
-        self._scale_weights_relId = function([decay_constant, idscale_constant], [],
-            updates = [ (x.var, idscale_constant*T.identity_like(x.var) + decay_constant*(x.var-idscale_constant*T.identity_like(x.var)) ) 
-                        for l in self.layers[:-1] for x in l.aug_params[:1] ]
-            )
-        self._add_weights_kId = function([idscale_constant], [],
-            updates = [ (x.var, x.var + idscale_constant*T.identity_like(x.var) ) 
-                        for l in self.layers[:-1] for x in l.aug_params[:1] ]
-            )
         # Update momentum based on cost gradient for given learning rate, input and target.
         learning_rate = T.scalar()
         self._momentum_deriv_add = function([self.symb_input, target, learning_rate], [],
@@ -111,18 +102,21 @@ class Network:
             updates = [(x.base, x.base + x.momentum) for x in aug_params]
             )
         # accuracy!
+        guesses = T.argmax(self.symb_output, axis = 1)
         if self.cost == log_likelihood:
-            guesses = T.argmax(self.symb_output, axis = 1)
-            self._corrects = theano.function([self.symb_input, target], T.sum(T.eq(guesses, target)))
-            
+            ans = target
             self._av_correct_confidence = function(
                 [self.symb_input, target],
                 T.mean(self.symb_output[T.arange(target.shape[0]), target])
                 )
+        else:
+            ans = T.argmax(target, axis = 1)
+        self._corrects = theano.function([self.symb_input, target], T.sum(T.eq(guesses, ans)))
+        
 
-            self._inspect_grad = function([self.symb_input, target], 
-                [T.grad(cost, x.var) for x in aug_params]
-                )
+        self._inspect_grad = function([self.symb_input, target], 
+            [T.grad(cost, x.var) for x in aug_params]
+            )
 
 
     def train(self, xs, ys, learning_rate = 0.01, learning_rates = None, normalize = False):
