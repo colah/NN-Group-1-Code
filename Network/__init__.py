@@ -53,15 +53,57 @@ class Network:
         for y in self.layer_ys:
             self._feedforward_fs += [function([self.symb_input], y)]
         self._feedforward = function([self.symb_input], self.symb_output)
+
+        #Introspection!
+        self.layer_infos = []
+        to_compute = []
+        def add_compute(p):
+            to_compute.append(p)
+            n = add_compute.n
+            add_compute.n += 1
+            return n
+        add_compute.n = 0
+        for layer, y, n in zip(self.layers, self.layer_ys, range(100)):
+            param_name_count = 0
+            def get_param_name(param):
+                if param == layer.W: return "W"
+                if param == layer.b: return "b"
+                name = "param_" + str(param_name_count)
+                return name
+            info = { "name" : str(n) + "_" + layer.__class__.__name__ ,
+                     "compute_names" : ["y", "y_grad"],
+                     "compute_ns" : [add_compute(y), add_compute(T.grad(cost, y))] }
+            if layer.activation and layer.activation == sigmoid:
+                info["activation"] = "sigmoid"
+            elif layer.activation and layer.activation == ReLU:
+                info["activation"] = "ReLU"
+            elif layer.activation and layer.activation == linear:
+                info["activation"] = "linear"
+            else:
+                info["activation"] = None
+
+
+            for p in layer.params or []:
+                p_name = get_param_name(p)
+                info["compute_names"].append( p_name )
+                info["compute_ns"].append( add_compute(p) )
+                info["compute_names"].append( p_name + "_grad" )
+                info["compute_ns"].append( add_compute( T.grad(cost, p) ) )
+            self.layer_infos.append(info)
+        self._complete_introspect = function(
+            [self.symb_input, target], to_compute) 
+        
         #Test performance on some input vs target answer
         self._test_cost = function(
             [self.symb_input, target], cost)
         aug_params = [x for l in self.layers for x in l.aug_params]
+
         # Scale parameter momentum
         scale_constant = T.scalar()
         self._scale_param_momentum = function([scale_constant], [],
             updates = [ (x.momentum, scale_constant*x.momentum ) for x in aug_params ]
             )
+
         # Weight decay
         decay_constant = T.scalar()
         self._scale_weights = function([decay_constant], [],
@@ -76,6 +118,7 @@ class Network:
             updates = [ (x.var, x.var + idscale_constant*T.identity_like(x.var) ) 
                         for l in self.layers[:-1] for x in l.aug_params[:1] ]
             )
+
         # Update momentum based on cost gradient for given learning rate, input and target.
         learning_rate = T.scalar()
         self._momentum_deriv_add = function([self.symb_input, target, learning_rate], [],
@@ -110,6 +153,7 @@ class Network:
         self._nesterov_learn = function([], [],
             updates = [(x.base, x.base + x.momentum) for x in aug_params]
             )
+
         # accuracy!
         if self.cost == log_likelihood:
             guesses = T.argmax(self.symb_output, axis = 1)
@@ -124,6 +168,15 @@ class Network:
                 [T.grad(cost, x.var) for x in aug_params]
                 )
 
+    def introspect(self, xs, ys):
+        introspection = self._complete_introspect(xs, ys)
+        human_readable = {}
+        for layer_info in self.layer_infos:
+            activity = {}
+            for name, n in zip(layer_info["compute_names"], layer_info["compute_ns"]):
+                activity[name] = introspection[n]
+            human_readable[layer_info["name"]] = activity
+        return human_readable
 
     def train(self, xs, ys, learning_rate = 0.01, learning_rates = None, normalize = False):
         self._scale_param_momentum(0.0)

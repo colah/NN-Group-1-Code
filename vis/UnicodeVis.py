@@ -91,6 +91,7 @@ def get_char_2x2(a,b,c,d):
 
 def get_char_2(a,b):
     dist = 100
+    C = "?"
     for a2,b2,in charmapH.keys():
         dist2 = (a-a2)**2 + (b-b2)**2
         if dist2 < dist:
@@ -102,13 +103,13 @@ def get_char_2(a,b):
 def vis_matrix(arrs, s2x2 = False):
 
     if len(arrs.shape) == 2:
-        if arrs.shape[0] < 100 and arrs.shape[1] < 100:
+        if arrs.shape[0] < 200 and arrs.shape[1] < 200:
             arrs = arrs.reshape(1, *arrs.shape)
         else:
             raise ValueError("vis_matrix_*: Shape of matrix to be visualized is too big. You probably made a mistake.")
     elif len(arrs.shape) == 1:
         raise ValueError("vis_matrix_* needs a 2 or 3 dimensional tensor. You probably want to use .reshape().")
-    if arrs.shape[0] > 20:
+    if arrs.shape[0] > 50:
         raise ValueError("vis_matrix_*: Can't visualize this many objects at once; you probably made a mistake.")
 
     N, Y, X = arrs.shape
@@ -118,8 +119,18 @@ def vis_matrix(arrs, s2x2 = False):
         for n in range(N):
             for x in range(0, X, d):
                 if s2x2:
-                    s += get_char_2x2(arrs[n][y  ][x],   arrs[n][y  ][x+1],
-                                      arrs[n][y+1][x],   arrs[n][y+1][x+1])
+                    if x == X-1 and y == Y-1:
+                        s += get_char_2x2(arrs[n][y  ][x],   0,
+                                          0,                 0)
+                    elif x == X-11:
+                        s += get_char_2x2(arrs[n][y  ][x],   0,
+                                          arrs[n][y+1][x],   0)
+                    elif y == Y-1:
+                        s += get_char_2x2(arrs[n][y  ][x],   arrs[n][y  ][x+1],
+                                          0,                 0)
+                    else:
+                        s += get_char_2x2(arrs[n][y  ][x],   arrs[n][y  ][x+1],
+                                          arrs[n][y+1][x],   arrs[n][y+1][x+1])
                 else:
                     s += 2*get_char(arrs[n][y][x])
             if n + 1 < N:

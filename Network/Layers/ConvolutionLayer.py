@@ -6,7 +6,7 @@ import numpy as np
 
 class ConvolutionLayer(Layer):
 
-    def __init__(self, conv_shape, n_features, init_wts_sd, 
+    def __init__(self, conv_shape, n_features, init_wts_sd=None, 
                  init_bias=0.0, activation = None):
         if len(conv_shape) != 2:
             raise "only 2D conv layers supported"
@@ -21,16 +21,15 @@ class ConvolutionLayer(Layer):
         conv_dims = len(self.conv_shape)
         if len(shape_in) < conv_dims:
             raise "convolution can't be applied to input shape"
-        elif len(shape_in) == 3:
-            W_shape = [self.n_features] + shape_in[:1] + self.conv_shape
         elif len(shape_in) == 2:
+            shape_in = [1] + shape_in
             x_symb = x_symb.dimshuffle(0, 'x', 1, 2)
-            W_shape = [self.n_features] + [1] + self.conv_shape
+        W_shape = [self.n_features] + shape_in[:1] + self.conv_shape
         shape_out = [self.n_features, shape_in[-2] - self.conv_shape[0] + 1, shape_in[-1] - self.conv_shape[1] + 1]
         size_out = product(shape_out)
 
         if not self.W:
-            self.W = self.new_param(W_shape, s = self.init_wts_sd)
+            self.W = self.new_param(W_shape, s = self.init_wts_sd or product(shape_in[:1] + self.conv_shape)**(-0.5) )
             self.b = self.new_param((self.n_features,), initial=self.init_bias)
 
         conv_out = conv.conv2d(x_symb, self.W, filter_shape = W_shape)
