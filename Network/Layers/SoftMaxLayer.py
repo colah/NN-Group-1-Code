@@ -21,8 +21,8 @@ class SoftMaxLayer(Layer):
             size_in    = product(shape_in)
             size_layer = product(self.layer_shape)
             self.shape_in = shape_in
-            self.W = self.new_param(
-                (size_in, size_layer), s = self.init_wts_sd or product(shape_in)**(-0.5))
+            init_wts_sd = self.init_wts_sd or product(shape_in)**(-0.5)
+            self.W = self.new_param((size_in, size_layer), s = init_wts_sd)
             self.b = self.new_param((size_layer,), initial=self.init_bias)
         elif self.shape_in != shape_in:
             raise "Fully connected layer can't be \
