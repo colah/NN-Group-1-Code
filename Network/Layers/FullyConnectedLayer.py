@@ -5,7 +5,7 @@ import numpy as np
 
 class FullyConnectedLayer(Layer):
 
-    def __init__(self, layer_shape, init_wts_sd = None, init_bias=0.0, 
+    def __init__(self, layer_shape, init_wts_sd = None, init_bias=0.0,
                  activation = None):
         if isinstance(layer_shape, int):
             layer_shape = [layer_shape]
@@ -20,8 +20,8 @@ class FullyConnectedLayer(Layer):
             size_in    = product(shape_in)
             size_layer = product(self.layer_shape)
             self.shape_in = shape_in
-            self.W = self.new_param(
-                (size_in, size_layer), s = self.init_wts_sd or product(shape_in)**(-0.5))
+            init_wts_sd = self.init_wts_sd or product(shape_in)**(-0.5)
+            self.W = self.new_param((size_in, size_layer), s = init_wts_sd)
             self.b = self.new_param((size_layer,), initial=self.init_bias)
         elif self.shape_in != shape_in:
             raise "Fully connected layer can't be \
